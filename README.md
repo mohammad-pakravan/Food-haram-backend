@@ -102,7 +102,8 @@ Content-Type: application/json
 
 {
   "username": "your_username",
-  "password": "your_password"
+  "password": "your_password",
+  "panel": "kitchen_manager"
 }
 ```
 
