@@ -1,6 +1,6 @@
 # 🍽 Django Multi-Restaurant Management System
 
-سیستم مدیریت چند کاربره برای مجموعه رستوران خیریه
+سیستم مدیریت چند کاربره برای مجموعه رستوران  
 
 ## 📋 فهرست مطالب
 
@@ -9,17 +9,18 @@
 - [نصب و راه‌اندازی](#نصب-و-راه‌اندازی)
 - [استفاده](#استفاده)
 - [ساختار پروژه](#ساختار-پروژه)
+- [نقش‌های کاربری (Panels)](#نقش‌های-کاربری-panels)
 - [API Endpoints](#api-endpoints)
 
 ## ✨ ویژگی‌ها
 
 - سیستم احراز هویت با JWT و HTTP Only Cookies (امنیت بالا)
 - مستندات کامل API با Swagger/ReDoc
-- مدیریت کاربران با نقش‌های چندگانه:
-  - مدیر آشپزخانه (Kitchen Manager)
-  - مدیر رستوران (Restaurant Manager)
-  - صدور ژتون (Token Issuer)
-  - تحویل غذا (Delivery Desk)
+- مدیریت مراکز و رستوران‌ها
+- مدیریت کاربران با نقش‌های چندگانه
+- کاربران مرکزی با دسترسی به تمام رستوران‌ها
+- هر کاربر فقط به یک رستوران متصل است
+- هر رستوران می‌تواند چندین کاربر داشته باشد
 - Dockerization برای محیط توسعه
 - REST API با Django REST Framework
 
@@ -63,17 +64,19 @@ docker-compose up -d --build
 ### 4. ایجاد کاربر superuser
 
 یک superuser به صورت خودکار با مقادیر پیش‌فرض ایجاد می‌شود:
+
 - **Username**: `admin`
 - **Password**: `admin123`
 - **Email**: `admin@example.com`
-- **Roles**: `restaurant_manager`, `kitchen_manager`
+- **Is Central**: `True` (دسترسی به تمام رستوران‌ها)
 
 برای تغییر این مقادیر، متغیرهای زیر را در فایل `.env` تنظیم کنید:
+
 ```env
 DJANGO_SUPERUSER_USERNAME=admin
 DJANGO_SUPERUSER_PASSWORD=admin123
 DJANGO_SUPERUSER_EMAIL=admin@example.com
-DJANGO_SUPERUSER_ROLES=restaurant_manager,kitchen_manager
+DJANGO_SUPERUSER_IS_CENTRAL=True
 ```
 
 **نکته:** اگر superuser با این username از قبل وجود داشته باشد، ایجاد نمی‌شود.
@@ -96,6 +99,7 @@ DJANGO_SUPERUSER_ROLES=restaurant_manager,kitchen_manager
 #### احراز هویت (HTTP Only Cookies)
 
 **ورود (Login)**
+
 ```http
 POST /api/auth/login/
 Content-Type: application/json
@@ -107,24 +111,52 @@ Content-Type: application/json
 }
 ```
 
-**Response:**
+**نکته:** فیلد `panel` اجباری است و باید یکی از نقش‌های زیر باشد:
+
+- `kitchen_manager`: مدیر آشپزخانه
+- `restaurant_manager`: مدیر رستوران
+- `token_issuer`: صدور ژتون
+- `delivery_desk`: تحویل غذا
+
+**Response (موفق):**
+
 ```json
 {
-  "message": "Login successful"
+  "message": "ورود موفقیت آمیز بود",
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "active_role": "kitchen_manager",
+    "restaurant": {
+      "id": 34,
+      "name": "user-name"
+    }
+  }
+}
+```
+
+**Response (عدم دسترسی):**
+
+```json
+{
+  "detail": "این سطح دسترسی وجود نداره"
 }
 ```
 
 Tokens به صورت HTTP Only Cookies تنظیم می‌شوند:
+
 - `access_token`: برای دسترسی به API (1 ساعت)
 - `refresh_token`: برای refresh کردن token (7 روز)
 
 **Refresh Token**
+
 ```http
 POST /api/auth/refresh/
 Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "message": "Token refreshed successfully"
@@ -134,11 +166,13 @@ Content-Type: application/json
 Token جدید به صورت خودکار در Cookie تنظیم می‌شود.
 
 **خروج (Logout)**
+
 ```http
 POST /api/auth/logout/
 ```
 
 **Response:**
+
 ```json
 {
   "message": "Logout successful"
@@ -148,6 +182,7 @@ POST /api/auth/logout/
 Cookies پاک می‌شوند.
 
 **اطلاعات کاربر فعلی**
+
 ```http
 GET /api/auth/me/
 ```
@@ -155,69 +190,100 @@ GET /api/auth/me/
 Token از Cookie به صورت خودکار خوانده می‌شود.
 
 **Response:**
+
 ```json
 {
   "id": 1,
   "username": "admin",
   "email": "admin@example.com",
-  "roles": ["restaurant_manager"],
-  "restaurant_name": "رستوران خیریه"
+  "is_central": false,
+  "is_central_display": false,
+  "restaurants": [
+    {
+      "id": 34,
+      "name": "user - name"
+    }
+  ]
 }
 ```
 
-### استفاده در Frontend
+**ویرایش اطلاعات کاربری**
 
-برای استفاده از API در frontend (مثلاً React یا Vue)، باید `credentials: 'include'` را در درخواست‌ها تنظیم کنید:
+```http
+PUT /api/auth/me/update/
+Content-Type: application/json
 
-**JavaScript/Fetch:**
-```javascript
-// Login
-fetch('http://localhost:8001/api/auth/login/', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
+{
+  "email": "newemail@example.com",
+  "first_name": "نام",
+  "last_name": "نام خانوادگی"
+}
+```
+
+**Response:**
+
+```json
+{
+  "message": "اطلاعات کاربری با موفقیت به‌روزرسانی شد",
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "email": "newemail@example.com",
+    ...
+  }
+}
+```
+
+**تغییر رمز عبور**
+
+```http
+POST /api/auth/me/change-password/
+Content-Type: application/json
+
+{
+  "old_password": "current_password",
+  "new_password": "new_secure_password",
+  "new_password_confirm": "new_secure_password"
+}
+```
+
+**Response:**
+
+```json
+{
+  "message": "رمز عبور با موفقیت تغییر کرد"
+}
+```
+
+**دریافت لیست نقش‌های موجود**
+
+```http
+GET /api/auth/roles/
+```
+
+**Response:**
+
+```json
+[
+  {
+    "value": "kitchen_manager",
+    "label": "مدیر آشپزخانه"
   },
-  credentials: 'include',  // مهم: برای ارسال cookies
-  body: JSON.stringify({
-    username: 'your_username',
-    password: 'your_password'
-  })
-});
-
-// Fetch user data
-fetch('http://localhost:8001/api/auth/me/', {
-  method: 'GET',
-  credentials: 'include',  // مهم: برای ارسال cookies
-});
+  {
+    "value": "restaurant_manager",
+    "label": "مدیر رستوران"
+  },
+  {
+    "value": "token_issuer",
+    "label": "صدور ژتون"
+  },
+  {
+    "value": "delivery_desk",
+    "label": "تحویل غذا"
+  }
+]
 ```
 
-**Axios:**
-```javascript
-axios.defaults.withCredentials = true;
-
-// Login
-axios.post('http://localhost:8001/api/auth/login/', {
-  username: 'your_username',
-  password: 'your_password'
-});
-
-// Fetch user data
-axios.get('http://localhost:8001/api/auth/me/');
-```
-
-**نکته مهم:** در production، باید `CORS_ALLOWED_ORIGINS` را در تنظیمات به دامنه frontend خود تنظیم کنید.
-
-### استفاده از Permissions در Views
-
-برای استفاده از permission های مخصوص هر پنل:
-
-```python
-from apps.accounts.permissions import KitchenAccess
-
-class MyKitchenView(APIView):
-    permission_classes = [KitchenAccess]
-    # ...
-```
 
 ## 📁 ساختار پروژه
 
@@ -245,8 +311,15 @@ restaurant_manager/
 │   │   ├── views.py
 │   │   ├── urls.py
 │   │   ├── permissions.py
+│   │   ├── authentication.py
+│   │   ├── token_serializer.py
 │   │   └── admin.py
-│   └── __init__.py
+│   └── restaurants/
+│       ├── models.py
+│       ├── serializers.py
+│       ├── views.py
+│       ├── urls.py
+│       └── admin.py
 ├── manage.py
 ├── requirements.txt
 ├── docker-compose.yml
@@ -270,16 +343,47 @@ docker-compose exec web python manage.py makemigrations
 docker-compose exec web python manage.py migrate
 ```
 
-## 🔐 نقش‌های کاربری
+## 🔐 نقش‌های کاربری (Panels)
 
-هر کاربر می‌تواند چند نقش همزمان داشته باشد. نقش‌های موجود:
+سیستم از 4 نوع پنل (نقش) پشتیبانی می‌کند:
 
-- `kitchen_manager`: مدیر آشپزخانه
-- `restaurant_manager`: مدیر رستوران
-- `token_issuer`: صدور ژتون
-- `delivery_desk`: تحویل غذا
+### انواع پنل‌ها:
 
-برای تنظیم نقش کاربر از Django Admin استفاده کنید.
+1. **`kitchen_manager`** - مدیر آشپزخانه
+
+   - مدیریت عملیات آشپزخانه
+   - نظارت بر تهیه غذا
+2. **`restaurant_manager`** - مدیر رستوران
+
+   - مدیریت کلی رستوران
+   - نظارت بر عملیات روزانه
+3. **`token_issuer`** - صدور ژتون
+
+   - صدور و مدیریت ژتون‌ها
+   - ثبت سفارشات
+4. **`delivery_desk`** - تحویل غذا
+
+   - مدیریت تحویل غذا
+   - ثبت وضعیت تحویل
+
+### قوانین دسترسی:
+
+- **کاربران مرکزی (`is_central=True`)**:
+
+  - دسترسی به تمام رستوران‌ها
+  - دسترسی به تمام پنل‌ها
+  - نیازی به تعریف رستوران ندارند
+- **کاربران عادی**:
+
+  - هر کاربر فقط به یک رستوران متصل است
+  - می‌توانند چندین نقش در همان رستوران داشته باشند
+  - فقط به رستوران خود دسترسی دارند
+
+### مدیریت دسترسی:
+
+برای تنظیم نقش‌ها و رستوران کاربر از Django Admin استفاده کنید:
+
+- مراکز (Centers) → رستوران‌ها (Restaurants) → کاربران و دسترسی‌ها (User Restaurant Permissions)
 
 ## 🐳 Docker Commands
 
@@ -322,12 +426,3 @@ python manage.py runserver
 - [ ] پنل صدور ژتون
 - [ ] پنل تحویل غذا
 - [ ] سیستم گزارش‌گیری
-
-## 📄 License
-
-[License information]
-
-## 👥 Contributors
-
-[Contributors information]
-
