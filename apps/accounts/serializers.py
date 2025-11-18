@@ -6,17 +6,16 @@ from .models import User
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for User model"""
     is_central_display = serializers.BooleanField(source='is_central', read_only=True)
-    restaurants = serializers.SerializerMethodField()
+    roles = serializers.SerializerMethodField()
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'is_central', 'is_central_display', 'restaurants']
+        fields = ['id', 'username', 'email', 'is_central', 'is_central_display', 'roles']
         read_only_fields = ['id', 'username']
     
-    def get_restaurants(self, obj):
-        """Get list of user's restaurants"""
-        restaurants = obj.get_restaurants()
-        return [{'id': r.id, 'name': r.name} for r in restaurants]
+    def get_roles(self, obj):
+        """Get list of user's roles"""
+        return obj.get_roles()
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):

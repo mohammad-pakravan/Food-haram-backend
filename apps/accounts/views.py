@@ -63,12 +63,10 @@ class LoginView(TokenObtainPairView):
                                 'id': openapi.Schema(type=openapi.TYPE_INTEGER, example=1),
                                 'username': openapi.Schema(type=openapi.TYPE_STRING, example='admin'),
                                 'active_role': openapi.Schema(type=openapi.TYPE_STRING, example='kitchen_manager'),
-                                'restaurant': openapi.Schema(
-                                    type=openapi.TYPE_OBJECT,
-                                    properties={
-                                        'id': openapi.Schema(type=openapi.TYPE_INTEGER, example=34),
-                                        'name': openapi.Schema(type=openapi.TYPE_STRING, example='محمد پاکروان')
-                                    }
+                                'roles': openapi.Schema(
+                                    type=openapi.TYPE_ARRAY,
+                                    items=openapi.Schema(type=openapi.TYPE_STRING),
+                                    example=['kitchen_manager', 'token_issuer']
                                 )
                             }
                         )
@@ -288,7 +286,7 @@ class MeView(APIView):
     Get current authenticated user information.
     
     Returns detailed information about the currently authenticated user,
-    including their roles, restaurants, and central user status.
+    including their roles and central user status.
     """
     permission_classes = [permissions.IsAuthenticated]
 

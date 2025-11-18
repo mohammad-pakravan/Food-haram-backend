@@ -39,7 +39,11 @@ INSTALLED_APPS = [
     
     # Local apps
     'apps.accounts',
-    'apps.restaurants',
+    'apps.ingredients',
+    'apps.foods',
+    'apps.menu',
+    'apps.tokens',
+    'apps.sales',
 ]
 
 MIDDLEWARE = [

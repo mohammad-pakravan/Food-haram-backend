@@ -1,0 +1,71 @@
+from django.db import models
+from django.core.validators import MinLengthValidator, MinValueValidator
+
+from apps.foods.models import Food
+
+
+class Token(models.Model):
+    token_code = models.CharField(
+        max_length=150,
+        verbose_name='توکن',
+        validators=[MinLengthValidator(2)],
+    )
+    customer_name = models.CharField(
+        max_length=150,
+        verbose_name='نام مشتری',
+        validators=[MinLengthValidator(2)],
+    )
+    phone = models.CharField(
+        max_length=150,
+        verbose_name='تلفن مشتری',
+        validators=[MinLengthValidator(2)],
+        blank=True,
+        null=True,
+    )
+    date = models.DateField(verbose_name='تاریخ')
+    total_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='قیمت کل',
+        validators=[MinValueValidator(0)],
+        default=0,
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
+
+    class Meta:
+        verbose_name = 'توکن'
+        verbose_name_plural = 'توکن‌ها'
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f"{self.token_code} - {self.customer_name}"
+
+
+class TokenItem(models.Model):
+    token = models.ForeignKey(
+        Token,
+        on_delete=models.CASCADE,
+        related_name='items',
+        verbose_name='توکن',
+    )
+    food = models.ForeignKey(
+        Food,
+        on_delete=models.CASCADE,
+        related_name='token_items',
+        verbose_name='غذا',
+    )
+    count = models.IntegerField(
+        verbose_name='تعداد',
+        validators=[MinValueValidator(0)],
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
+
+    class Meta:
+        verbose_name = 'آیتم توکن'
+        verbose_name_plural = 'اقلام توکن'
+        ordering = ['created_at']
+
+    def __str__(self) -> str:
+        return f"{self.token.token_code} - {self.food.title}"
