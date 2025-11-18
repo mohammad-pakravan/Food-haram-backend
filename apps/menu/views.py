@@ -6,7 +6,7 @@ from drf_yasg import openapi
 import jdatetime
 from datetime import date
 
-from apps.accounts.permissions import KitchenAccess
+from apps.accounts.permissions import RestaurantAccess
 
 from .models import MenuPlan
 from .serializers import MenuPlanSerializer
@@ -22,14 +22,14 @@ class MenuPlanViewSet(
 ):
     """
     ViewSet for managing menu plans.
-    Kitchen managers can create, update, and delete menu plans,
+    Restaurant managers can create, update, and delete menu plans,
     but cannot modify cook_status (only view it).
     Central users have full access including cook_status.
     """
 
     queryset = MenuPlan.objects.select_related('food', 'dessert')
     serializer_class = MenuPlanSerializer
-    permission_classes = [KitchenAccess]
+    permission_classes = [RestaurantAccess]
 
     def get_queryset(self):
         """Filter menu plans by date (Jalali or Gregorian)"""
@@ -56,7 +56,7 @@ class MenuPlanViewSet(
 
     @swagger_auto_schema(
         operation_summary="List menu plans",
-        operation_description="Retrieve a paginated list of all menu plans. Filter by date using 'date' query parameter (Jalali format: YYYY-MM-DD). Requires kitchen manager access.",
+        operation_description="Retrieve a paginated list of all menu plans. Filter by date using 'date' query parameter (Jalali format: YYYY-MM-DD). Requires restaurant manager access.",
         manual_parameters=[
             openapi.Parameter(
                 name='date',
@@ -80,7 +80,7 @@ class MenuPlanViewSet(
 
     @swagger_auto_schema(
         operation_summary="Retrieve menu plan",
-        operation_description="Retrieve a specific menu plan. Requires kitchen manager access.",
+        operation_description="Retrieve a specific menu plan. Requires restaurant manager access.",
         responses={200: MenuPlanSerializer()},
     )
     def retrieve(self, request, *args, **kwargs):
@@ -88,7 +88,7 @@ class MenuPlanViewSet(
 
     @swagger_auto_schema(
         operation_summary="Create menu plan",
-        operation_description="Create a new menu plan. Kitchen managers cannot set cook_status (defaults to 'pending'). Requires kitchen manager access.",
+        operation_description="Create a new menu plan. Restaurant managers cannot set cook_status (defaults to 'pending'). Requires restaurant manager access.",
         responses={201: MenuPlanSerializer()},
     )
     def create(self, request, *args, **kwargs):
@@ -96,7 +96,7 @@ class MenuPlanViewSet(
 
     @swagger_auto_schema(
         operation_summary="Update menu plan",
-        operation_description="Replace an existing menu plan. Kitchen managers cannot modify cook_status. Requires kitchen manager access.",
+        operation_description="Replace an existing menu plan. Restaurant managers cannot modify cook_status. Requires restaurant manager access.",
         responses={200: MenuPlanSerializer()},
     )
     def update(self, request, *args, **kwargs):
@@ -104,7 +104,7 @@ class MenuPlanViewSet(
 
     @swagger_auto_schema(
         operation_summary="Partially update menu plan",
-        operation_description="Partially update a menu plan. Kitchen managers cannot modify cook_status. Requires kitchen manager access.",
+        operation_description="Partially update a menu plan. Restaurant managers cannot modify cook_status. Requires restaurant manager access.",
         responses={200: MenuPlanSerializer()},
     )
     def partial_update(self, request, *args, **kwargs):
@@ -112,7 +112,7 @@ class MenuPlanViewSet(
 
     @swagger_auto_schema(
         operation_summary="Delete menu plan",
-        operation_description="Delete a menu plan. Requires kitchen manager access.",
+        operation_description="Delete a menu plan. Requires restaurant manager access.",
         responses={204: 'Menu plan deleted'},
     )
     def destroy(self, request, *args, **kwargs):

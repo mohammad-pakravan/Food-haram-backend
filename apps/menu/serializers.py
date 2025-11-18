@@ -64,11 +64,11 @@ class MenuPlanSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Check if user is kitchen manager (not central)
+        # Check if user is restaurant manager (not central)
         request = self.context.get('request')
         if request and request.user:
-            # Kitchen managers can't edit cook_status, only view it
-            if not request.user.is_central and request.user.has_role('kitchen_manager'):
+            # Restaurant managers can't edit cook_status, only view it
+            if not request.user.is_central and request.user.has_role('restaurant_manager'):
                 self.fields['cook_status'].read_only = True
 
     def validate(self, attrs):
