@@ -68,6 +68,32 @@ class FoodManagementSerializer(serializers.ModelSerializer):
 
         return attrs
 
+    def _sync_ingredients(self, food: Food, ingredients_data):
+        if ingredients_data is None:
+            return
+        food.ingredients.all().delete()
+        FoodIngredient.objects.bulk_create([
+            FoodIngredient(
+                food=food,
+                ingredient=item['ingredient'],
+                amount_per_serving=item['amount_per_serving'],
+            )
+            for item in ingredients_data
+        ])
+
+    def create(self, validated_data):
+        ingredients_data = validated_data.pop('ingredients', [])
+        food = Food.objects.create(**validated_data)
+        self._sync_ingredients(food, ingredients_data)
+        return food
+
+    def update(self, instance, validated_data):
+        ingredients_data = validated_data.pop('ingredients', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        self._sync_ingredients(instance, ingredients_data)
+        return instance
 
 class DessertSerializer(serializers.ModelSerializer):
     unit_price = serializers.DecimalField(max_digits=10, decimal_places=2)
