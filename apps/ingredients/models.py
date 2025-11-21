@@ -23,7 +23,7 @@ UNIT_CHOICES = [
 
 CATEGORY_TYPE_CHOICES = [
     ('noraml', 'عادی'),
-    ('hazrati ', 'حضرتی'),
+    ('hazrati', 'حضرتی'),
 ]
 
 
