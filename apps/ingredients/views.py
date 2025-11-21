@@ -1,6 +1,7 @@
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, permissions, viewsets
 
 from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from apps.accounts.permissions import KitchenAccess
 
@@ -9,6 +10,7 @@ from .serializers import IngredientSerializer
 
 
 class IngredientManagementViewSet(
+    mixins.ListModelMixin,
     mixins.CreateModelMixin,
     mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
@@ -22,7 +24,21 @@ class IngredientManagementViewSet(
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     permission_classes = [KitchenAccess]
-    http_method_names = ['post', 'put', 'patch', 'delete']
+    lookup_field = 'id'
+    http_method_names = ['get', 'post', 'put', 'patch', 'delete']
+
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS:
+            return [permissions.IsAuthenticated()]
+        return [KitchenAccess()]
+
+    @swagger_auto_schema(
+        operation_summary="List ingredients",
+        operation_description="Retrieve all ingredients with full details. Requires authentication.",
+        responses={200: IngredientSerializer(many=True)},
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
     @swagger_auto_schema(
         operation_summary="Create ingredient",
@@ -35,6 +51,15 @@ class IngredientManagementViewSet(
     @swagger_auto_schema(
         operation_summary="Update ingredient",
         operation_description="Replace an existing ingredient record via PUT. Requires kitchen manager access.",
+        manual_parameters=[
+            openapi.Parameter(
+                name='id',
+                in_=openapi.IN_PATH,
+                description='Ingredient ID',
+                type=openapi.TYPE_INTEGER,
+                required=True,
+            ),
+        ],
         responses={200: IngredientSerializer()},
     )
     def update(self, request, *args, **kwargs):
@@ -43,6 +68,15 @@ class IngredientManagementViewSet(
     @swagger_auto_schema(
         operation_summary="Partially update ingredient",
         operation_description="Partially update an ingredient via PATCH. Requires kitchen manager access.",
+        manual_parameters=[
+            openapi.Parameter(
+                name='id',
+                in_=openapi.IN_PATH,
+                description='Ingredient ID',
+                type=openapi.TYPE_INTEGER,
+                required=True,
+            ),
+        ],
         responses={200: IngredientSerializer()},
     )
     def partial_update(self, request, *args, **kwargs):
@@ -51,6 +85,15 @@ class IngredientManagementViewSet(
     @swagger_auto_schema(
         operation_summary="Delete ingredient",
         operation_description="Delete an ingredient record. Requires kitchen manager access.",
+        manual_parameters=[
+            openapi.Parameter(
+                name='id',
+                in_=openapi.IN_PATH,
+                description='Ingredient ID',
+                type=openapi.TYPE_INTEGER,
+                required=True,
+            ),
+        ],
         responses={204: 'Ingredient deleted'},
     )
     def destroy(self, request, *args, **kwargs):

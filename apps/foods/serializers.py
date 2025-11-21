@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from apps.ingredients.models import Ingredient, CATEGORY_TYPE_CHOICES
-from .models import Food, FoodIngredient
+from .models import Dessert, Food, FoodIngredient
 
 
 class FoodIngredientWriteSerializer(serializers.Serializer):
@@ -22,6 +22,7 @@ class FoodIngredientReadSerializer(serializers.ModelSerializer):
 class FoodManagementSerializer(serializers.ModelSerializer):
     ingredients = FoodIngredientWriteSerializer(many=True, required=False, write_only=True)
     ingredients_detail = FoodIngredientReadSerializer(source='ingredients', many=True, read_only=True)
+    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
         model = Food
@@ -67,30 +68,19 @@ class FoodManagementSerializer(serializers.ModelSerializer):
 
         return attrs
 
-    def _sync_ingredients(self, food: Food, ingredients_data):
-        if ingredients_data is None:
-            return
-        food.ingredients.all().delete()
-        FoodIngredient.objects.bulk_create([
-            FoodIngredient(
-                food=food,
-                ingredient=item['ingredient'],
-                amount_per_serving=item['amount_per_serving'],
-            )
-            for item in ingredients_data
-        ])
 
-    def create(self, validated_data):
-        ingredients_data = validated_data.pop('ingredients', [])
-        food = Food.objects.create(**validated_data)
-        self._sync_ingredients(food, ingredients_data)
-        return food
+class DessertSerializer(serializers.ModelSerializer):
+    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2)
 
-    def update(self, instance, validated_data):
-        ingredients_data = validated_data.pop('ingredients', None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        self._sync_ingredients(instance, ingredients_data)
-        return instance
+    class Meta:
+        model = Dessert
+        fields = [
+            'id',
+            'title',
+            'category',
+            'unit_price',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
