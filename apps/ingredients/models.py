@@ -43,7 +43,7 @@ class Ingredient(models.Model):
         max_length=150,
         choices=UNIT_CHOICES,
         verbose_name='واحد',
-        validators=[MinLengthValidator(2)],
+        validators=[MinLengthValidator(1)],
     )
     unit_price = models.DecimalField(
         max_digits=10,
@@ -110,7 +110,7 @@ class InventoryLog(models.Model):
         max_length=150,
         choices=UNIT_CHOICES,
         verbose_name='واحد',
-        validators=[MinLengthValidator(2)],
+        validators=[MinLengthValidator(1)],
     )
     code = models.CharField(
         max_length=150,

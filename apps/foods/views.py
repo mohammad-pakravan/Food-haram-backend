@@ -3,7 +3,7 @@ from rest_framework import mixins, permissions, viewsets
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-from apps.accounts.permissions import KitchenAccess
+from apps.accounts.permissions import KitchenAccess, RestaurantOrKitchenAccess
 
 from .models import Dessert, Food
 from .serializers import DessertSerializer, FoodManagementSerializer
@@ -19,7 +19,8 @@ class FoodManagementViewSet(
 ):
     """
     ViewSet for managing foods (list/retrieve/create/update/delete) along with their ingredients.
-    Only accessible to kitchen managers (or central users).
+    List and retrieve accessible to restaurant managers and kitchen managers.
+    Create/update/delete require kitchen manager access.
     """
 
     queryset = Food.objects.prefetch_related('ingredients__ingredient')
@@ -27,9 +28,17 @@ class FoodManagementViewSet(
     permission_classes = [KitchenAccess]
     lookup_field = 'id'
 
+    def get_permissions(self):
+        """Allow restaurant_manager and kitchen_manager for reads, kitchen_manager only for writes."""
+        if self.request.method in permissions.SAFE_METHODS:
+            # For read operations, allow restaurant_manager or kitchen_manager
+            return [RestaurantOrKitchenAccess()]
+        # For write operations, require kitchen_manager access
+        return [KitchenAccess()]
+
     @swagger_auto_schema(
         operation_summary="List foods",
-        operation_description="Retrieve a paginated list of all foods with their ingredients. Requires kitchen manager access.",
+        operation_description="Retrieve a paginated list of all foods with their ingredients. Accessible to restaurant managers and kitchen managers.",
         responses={200: FoodManagementSerializer(many=True)},
     )
     def list(self, request, *args, **kwargs):
@@ -37,7 +46,7 @@ class FoodManagementViewSet(
 
     @swagger_auto_schema(
         operation_summary="Retrieve food",
-        operation_description="Retrieve a specific food with its ingredients. Requires kitchen manager access.",
+        operation_description="Retrieve a specific food with its ingredients. Accessible to restaurant managers and kitchen managers.",
         responses={200: FoodManagementSerializer()},
     )
     def retrieve(self, request, *args, **kwargs):

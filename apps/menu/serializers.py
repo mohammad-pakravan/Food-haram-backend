@@ -38,6 +38,7 @@ class JalaliDateField(serializers.Field):
 class MenuPlanSerializer(serializers.ModelSerializer):
     food_title = serializers.CharField(source='food.title', read_only=True)
     food_category = serializers.CharField(source='food.category', read_only=True)
+    food_preparation_time = serializers.IntegerField(source='food.preparation_time', read_only=True)
     dessert_title = serializers.CharField(source='dessert.title', read_only=True, allow_null=True)
     date_jalali = JalaliDateField(source='date', read_only=False, required=False)
     date = serializers.DateField(required=False, write_only=True)
@@ -51,6 +52,7 @@ class MenuPlanSerializer(serializers.ModelSerializer):
             'food',
             'food_title',
             'food_category',
+            'food_preparation_time',
             'meal_type',
             'capacity',
             'dessert',
@@ -60,16 +62,9 @@ class MenuPlanSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'food_title', 'food_category', 'dessert_title']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'food_title', 'food_category', 'food_preparation_time', 'dessert_title']
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Check if user is restaurant manager (not central)
-        request = self.context.get('request')
-        if request and request.user:
-            # Restaurant managers can't edit cook_status, only view it
-            if not request.user.is_central and request.user.has_role('restaurant_manager'):
-                self.fields['cook_status'].read_only = True
+    # cook_status is now editable by kitchen managers
 
     def validate(self, attrs):
         """Ensure date is provided either as date or date_jalali"""

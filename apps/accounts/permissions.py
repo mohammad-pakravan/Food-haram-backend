@@ -39,3 +39,21 @@ class TokenIssuerAccess(HasPanelAccess):
 class DeliveryDeskAccess(HasPanelAccess):
     required_role = 'delivery_desk'
 
+
+class RestaurantOrKitchenAccess(BasePermission):
+    """
+    Permission class that allows both restaurant_manager and kitchen_manager roles.
+    Central users always have access.
+    """
+    def has_permission(self, request, view):
+        user = request.user
+        if not user.is_authenticated:
+            return False
+        
+        # Central users always have access
+        if user.is_central:
+            return True
+        
+        # Allow restaurant_manager or kitchen_manager
+        return user.has_role('restaurant_manager') or user.has_role('kitchen_manager')
+
