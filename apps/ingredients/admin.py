@@ -5,7 +5,7 @@ from .models import Ingredient, InventoryStock, InventoryLog
 
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'unit', 'unit_price', 'warning_amount', 'updated_at')
+    list_display = ('name', 'category', 'unit', 'unit_price', 'warning_amount', 'created_at', 'updated_at')
     list_filter = ('category', 'unit')
     search_fields = ('name', 'code')
     ordering = ('name',)
@@ -14,7 +14,7 @@ class IngredientAdmin(admin.ModelAdmin):
 
 @admin.register(InventoryStock)
 class InventoryStockAdmin(admin.ModelAdmin):
-    list_display = ('ingredient', 'total_amount', 'updated_at')
+    list_display = ('ingredient', 'total_amount', 'last_received_date', 'created_at', 'updated_at')
     search_fields = ('ingredient__name',)
     autocomplete_fields = ('ingredient',)
     readonly_fields = ('created_at', 'updated_at')
@@ -22,7 +22,7 @@ class InventoryStockAdmin(admin.ModelAdmin):
 
 @admin.register(InventoryLog)
 class InventoryLogAdmin(admin.ModelAdmin):
-    list_display = ('inventory', 'amount', 'unit', 'code', 'created_at')
+    list_display = ('inventory', 'amount', 'unit', 'code', 'date', 'created_at')
     list_filter = ('unit',)
     search_fields = ('inventory__ingredient__name', 'code')
     autocomplete_fields = ('inventory',)

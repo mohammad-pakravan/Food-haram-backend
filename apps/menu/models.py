@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MinLengthValidator, MinValueValidator
+from django_jalali.db import models as jmodels
 
 from apps.foods.models import Food, Dessert, MEAL_TYPE_CHOICES
 
@@ -12,7 +13,8 @@ COOK_STATUS_CHOICES = [
 
 
 class MenuPlan(models.Model):
-    date = models.DateField(verbose_name='تاریخ')
+    objects = jmodels.jManager()
+    date = jmodels.jDateField(verbose_name='تاریخ')
     food = models.ForeignKey(
         Food,
         on_delete=models.CASCADE,
@@ -49,8 +51,8 @@ class MenuPlan(models.Model):
         default='pending',
         verbose_name='وضعیت پخت',
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = jmodels.jDateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
 
     class Meta:
         verbose_name = 'برنامه غذایی'

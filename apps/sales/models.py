@@ -1,10 +1,12 @@
 from django.db import models
 from django.core.validators import MinLengthValidator, MinValueValidator
+from django_jalali.db import models as jmodels
 
 from apps.foods.models import Food
 
 
 class DirectSale(models.Model):
+    objects = jmodels.jManager()
     customer_name = models.CharField(
         max_length=150,
         verbose_name='نام مشتری',
@@ -23,8 +25,8 @@ class DirectSale(models.Model):
         verbose_name='قیمت کل',
         validators=[MinValueValidator(0)],
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = jmodels.jDateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
 
     class Meta:
         verbose_name = 'فروش مستقیم'
@@ -36,6 +38,7 @@ class DirectSale(models.Model):
 
 
 class DirectSaleItem(models.Model):
+    objects = jmodels.jManager()
     direct_sale = models.ForeignKey(
         DirectSale,
         on_delete=models.CASCADE,
@@ -52,8 +55,8 @@ class DirectSaleItem(models.Model):
         verbose_name='تعداد',
         validators=[MinValueValidator(0)],
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = jmodels.jDateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
 
     class Meta:
         verbose_name = 'آیتم فروش مستقیم'

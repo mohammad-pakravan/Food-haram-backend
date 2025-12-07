@@ -5,7 +5,7 @@ from .models import MenuPlan
 
 @admin.register(MenuPlan)
 class MenuPlanAdmin(admin.ModelAdmin):
-    list_display = ('date', 'food', 'meal_type', 'capacity', 'cook_status')
+    list_display = ('date', 'food', 'meal_type', 'capacity', 'cook_status', 'created_at', 'updated_at')
     list_filter = ('meal_type', 'cook_status', 'date')
     search_fields = ('food__title',)
     autocomplete_fields = ('food', 'dessert')

@@ -63,7 +63,7 @@ class InventoryStockViewSet(
 
     @swagger_auto_schema(
         operation_summary="Update inventory stock",
-        operation_description="Update an inventory stock entry via PUT. Requires kitchen manager access.",
+        operation_description="Update an inventory stock entry via PUT. Requires kitchen manager access. Date should be provided in Jalali format (YYYY-MM-DD, e.g., 1404-08-27).",
         manual_parameters=[
             openapi.Parameter(
                 name='id',
@@ -73,6 +73,19 @@ class InventoryStockViewSet(
                 required=True,
             ),
         ],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'ingredient': openapi.Schema(type=openapi.TYPE_INTEGER, description='Ingredient ID'),
+                'total_amount': openapi.Schema(type=openapi.TYPE_NUMBER, description='Total amount in stock'),
+                'last_received_date': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description='Last received date in Jalali format (YYYY-MM-DD, e.g., 1404-08-27)',
+                    example='1404-08-27'
+                ),
+            },
+            required=['ingredient', 'total_amount']
+        ),
         responses={200: InventoryStockSerializer()},
     )
     def update(self, request, *args, **kwargs):
@@ -80,7 +93,7 @@ class InventoryStockViewSet(
 
     @swagger_auto_schema(
         operation_summary="Partially update inventory stock",
-        operation_description="Partially update an inventory stock entry via PATCH. Requires kitchen manager access.",
+        operation_description="Partially update an inventory stock entry via PATCH. Requires kitchen manager access. Date should be provided in Jalali format (YYYY-MM-DD, e.g., 1404-08-27).",
         manual_parameters=[
             openapi.Parameter(
                 name='id',
@@ -90,6 +103,18 @@ class InventoryStockViewSet(
                 required=True,
             ),
         ],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'ingredient': openapi.Schema(type=openapi.TYPE_INTEGER, description='Ingredient ID'),
+                'total_amount': openapi.Schema(type=openapi.TYPE_NUMBER, description='Total amount in stock'),
+                'last_received_date': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description='Last received date in Jalali format (YYYY-MM-DD, e.g., 1404-08-27)',
+                    example='1404-08-27'
+                ),
+            },
+        ),
         responses={200: InventoryStockSerializer()},
     )
     def partial_update(self, request, *args, **kwargs):
@@ -139,7 +164,22 @@ class InventoryLogViewSet(
 
     @swagger_auto_schema(
         operation_summary="Create inventory log",
-        operation_description="Create a new inventory log entry (item received from warehouse). This will update the inventory stock. Requires kitchen manager access.",
+        operation_description="Create a new inventory log entry (item received from warehouse). This will update the inventory stock. Requires kitchen manager access. Date should be provided in Jalali format (YYYY-MM-DD, e.g., 1404-08-27).",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'inventory': openapi.Schema(type=openapi.TYPE_INTEGER, description='Inventory stock ID'),
+                'amount': openapi.Schema(type=openapi.TYPE_INTEGER, description='Amount received'),
+                'unit': openapi.Schema(type=openapi.TYPE_STRING, description='Unit of measurement'),
+                'code': openapi.Schema(type=openapi.TYPE_STRING, description='Code'),
+                'date': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description='Date in Jalali format (YYYY-MM-DD, e.g., 1404-08-27)',
+                    example='1404-08-27'
+                ),
+            },
+            required=['inventory', 'amount', 'unit', 'code', 'date']
+        ),
         responses={201: InventoryLogSerializer()},
     )
     def create(self, request, *args, **kwargs):
@@ -159,4 +199,5 @@ class InventoryLogViewSet(
         
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 

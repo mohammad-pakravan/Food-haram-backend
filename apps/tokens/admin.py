@@ -7,12 +7,13 @@ class TokenItemInline(admin.TabularInline):
     model = TokenItem
     extra = 1
     autocomplete_fields = ('food',)
+    fields = ('food', 'count', 'unit_price')
     readonly_fields = ('created_at', 'updated_at')
 
 
 @admin.register(Token)
 class TokenAdmin(admin.ModelAdmin):
-    list_display = ('token_code', 'customer_name', 'date', 'total_price', 'updated_at')
+    list_display = ('token_code', 'customer_name', 'date', 'total_price', 'created_at', 'updated_at')
     list_filter = ('date',)
     search_fields = ('token_code', 'customer_name', 'phone')
     inlines = (TokenItemInline,)

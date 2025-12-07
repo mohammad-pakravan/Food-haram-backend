@@ -1,10 +1,12 @@
 from django.db import models
 from django.core.validators import MinLengthValidator, MinValueValidator
+from django_jalali.db import models as jmodels
 
 from apps.foods.models import Food
 
 
 class Token(models.Model):
+    objects = jmodels.jManager()
     token_code = models.CharField(
         max_length=150,
         verbose_name='توکن',
@@ -22,7 +24,7 @@ class Token(models.Model):
         blank=True,
         null=True,
     )
-    date = models.DateField(verbose_name='تاریخ')
+    date = jmodels.jDateField(verbose_name='تاریخ')
     total_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -30,8 +32,8 @@ class Token(models.Model):
         validators=[MinValueValidator(0)],
         default=0,
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = jmodels.jDateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
 
     class Meta:
         verbose_name = 'توکن'
@@ -43,6 +45,7 @@ class Token(models.Model):
 
 
 class TokenItem(models.Model):
+    objects = jmodels.jManager()
     token = models.ForeignKey(
         Token,
         on_delete=models.CASCADE,
@@ -59,8 +62,8 @@ class TokenItem(models.Model):
         verbose_name='تعداد',
         validators=[MinValueValidator(0)],
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = jmodels.jDateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
 
     class Meta:
         verbose_name = 'آیتم توکن'
