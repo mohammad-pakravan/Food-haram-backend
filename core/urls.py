@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/ingredients/', include('apps.ingredients.urls')),
     path('api/foods/', include('apps.foods.urls')),
     path('api/menu/', include('apps.menu.urls')),
+    path('api/tokens/', include('apps.tokens.urls')),
     
     # Swagger URLs
     re_path(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),

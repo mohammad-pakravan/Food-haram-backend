@@ -7,7 +7,7 @@ class DirectSaleItemInline(admin.TabularInline):
     model = DirectSaleItem
     extra = 1
     autocomplete_fields = ('food',)
-    fields = ('food', 'count', 'unit_price')
+    fields = ('food', 'count')
     readonly_fields = ('created_at', 'updated_at')
 
 

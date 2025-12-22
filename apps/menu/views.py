@@ -7,7 +7,8 @@ from drf_yasg import openapi
 import jdatetime
 from datetime import date
 
-from apps.accounts.permissions import KitchenAccess
+from rest_framework import permissions
+from apps.accounts.permissions import KitchenAccess, KitchenOrTokenIssuerAccess
 
 from .models import MenuPlan
 from .serializers import MenuPlanSerializer
@@ -24,12 +25,19 @@ class MenuPlanViewSet(
     """
     ViewSet for managing menu plans.
     Kitchen managers can create, update, delete menu plans, and modify cook_status.
+    Token issuers can view menu plans (read-only).
     Central users have full access.
     """
 
     queryset = MenuPlan.objects.select_related('food', 'dessert')
     serializer_class = MenuPlanSerializer
     permission_classes = [KitchenAccess]
+    
+    def get_permissions(self):
+        """Allow token_issuer for read operations, kitchen_manager for write operations"""
+        if self.request.method in permissions.SAFE_METHODS:
+            return [KitchenOrTokenIssuerAccess()]
+        return [KitchenAccess()]
 
     def get_queryset(self):
         """Get base queryset. Filtering by date is handled in list() method."""
@@ -37,7 +45,7 @@ class MenuPlanViewSet(
 
     @swagger_auto_schema(
         operation_summary="List menu plans",
-        operation_description="Retrieve a paginated list of all menu plans. Returns all menu plans if no date filter is provided. Requires kitchen manager access.",
+        operation_description="Retrieve a paginated list of all menu plans. Returns all menu plans if no date filter is provided. Accessible to kitchen managers and token issuers.",
         manual_parameters=[
             openapi.Parameter(
                 name='date',
@@ -88,7 +96,7 @@ class MenuPlanViewSet(
 
     @swagger_auto_schema(
         operation_summary="Retrieve menu plan",
-        operation_description="Retrieve a specific menu plan. Requires kitchen manager access.",
+        operation_description="Retrieve a specific menu plan. Accessible to kitchen managers and token issuers.",
         responses={200: MenuPlanSerializer()},
     )
     def retrieve(self, request, *args, **kwargs):

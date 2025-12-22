@@ -23,7 +23,7 @@ UNIT_CHOICES = [
 ]
 
 CATEGORY_TYPE_CHOICES = [
-    ('noraml', 'عادی'),
+    ('normal', 'عادی'),
     ('hazrati', 'حضرتی'),
 ]
 
@@ -48,7 +48,7 @@ SUBCATEGORY_CHOICES = HAZRATI_SUBCATEGORY_CHOICES + NORMAL_SUBCATEGORY_CHOICES
 # Mapping category to valid subcategories
 CATEGORY_SUBCATEGORY_MAP = {
     'hazrati': [choice[0] for choice in HAZRATI_SUBCATEGORY_CHOICES],
-    'noraml': [choice[0] for choice in NORMAL_SUBCATEGORY_CHOICES],
+    'normal': [choice[0] for choice in NORMAL_SUBCATEGORY_CHOICES],
 }
 
 

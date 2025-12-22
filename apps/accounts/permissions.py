@@ -57,3 +57,21 @@ class RestaurantOrKitchenAccess(BasePermission):
         # Allow restaurant_manager or kitchen_manager
         return user.has_role('restaurant_manager') or user.has_role('kitchen_manager')
 
+
+class KitchenOrTokenIssuerAccess(BasePermission):
+    """
+    Permission class that allows both kitchen_manager and token_issuer roles.
+    Central users always have access.
+    """
+    def has_permission(self, request, view):
+        user = request.user
+        if not user.is_authenticated:
+            return False
+        
+        # Central users always have access
+        if user.is_central:
+            return True
+        
+        # Allow kitchen_manager or token_issuer
+        return user.has_role('kitchen_manager') or user.has_role('token_issuer')
+
