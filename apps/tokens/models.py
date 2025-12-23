@@ -5,6 +5,12 @@ from django_jalali.db import models as jmodels
 from apps.foods.models import Food
 
 
+STATUS_CHOICES = [
+    ('pending', 'در انتظار دریافت'),
+    ('received', 'دریافت شده'),
+]
+
+
 class Token(models.Model):
     objects = jmodels.jManager()
     token_code = models.CharField(
@@ -31,6 +37,12 @@ class Token(models.Model):
         verbose_name='قیمت کل',
         validators=[MinValueValidator(0)],
         default=0,
+    )
+    status = models.CharField(
+        max_length=50,
+        choices=STATUS_CHOICES,
+        default='pending',
+        verbose_name='وضعیت',
     )
     created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
     updated_at = jmodels.jDateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')

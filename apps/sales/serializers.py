@@ -7,9 +7,9 @@ from django.db import transaction
 from drf_yasg.utils import swagger_serializer_method
 from drf_yasg import openapi
 
-from .models import Token, TokenItem, STATUS_CHOICES
+from .models import DirectSale, DirectSaleItem
 from apps.foods.models import Food
-from apps.ingredients.models import HAZRATI_SUBCATEGORY_CHOICES, SUBCATEGORY_CHOICES
+from apps.ingredients.models import NORMAL_SUBCATEGORY_CHOICES, SUBCATEGORY_CHOICES
 from apps.menu.models import MenuPlan
 
 
@@ -54,43 +54,43 @@ class JalaliDateField(serializers.Field):
 
 
 class FoodItemSerializer(serializers.Serializer):
-    """Serializer for food items in token creation"""
+    """Serializer for food items in sale creation"""
     class Meta:
-        ref_name = 'TokenFoodItem'
+        ref_name = 'SaleFoodItem'
     
     food = serializers.PrimaryKeyRelatedField(queryset=Food.objects.all())
     count = serializers.IntegerField(min_value=1)
 
 
-class TokenItemReadSerializer(serializers.ModelSerializer):
-    """Serializer for reading TokenItem"""
+class DirectSaleItemReadSerializer(serializers.ModelSerializer):
+    """Serializer for reading DirectSaleItem"""
     food_title = serializers.CharField(source='food.title', read_only=True)
     food_unit_price = serializers.DecimalField(source='food.unit_price', max_digits=10, decimal_places=2, read_only=True)
     
     class Meta:
-        model = TokenItem
+        model = DirectSaleItem
         fields = ['id', 'food', 'food_title', 'food_unit_price', 'count', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
-class TokenCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating Token with TokenItems"""
+class DirectSaleCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating DirectSale with DirectSaleItems"""
     date = JalaliDateField()
     subcategory = serializers.ChoiceField(
-        choices=HAZRATI_SUBCATEGORY_CHOICES,
+        choices=NORMAL_SUBCATEGORY_CHOICES,
         write_only=True,
-        help_text='زیر دسته‌بندی (همه توکن‌ها به صورت پیش‌فرض حضرتی هستند)'
+        help_text='زیر دسته‌بندی (همه فروش‌ها به صورت پیش‌فرض عادی هستند)'
     )
-    foods = FoodItemSerializer(many=True, required=False)
-    token_code = serializers.CharField(read_only=True)
+    foods = FoodItemSerializer(many=True)
+    sale_code = serializers.CharField(read_only=True)
     total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     items = serializers.SerializerMethodField()
     
     class Meta:
-        model = Token
+        model = DirectSale
         fields = [
             'id',
-            'token_code',
+            'sale_code',
             'date',
             'subcategory',
             'customer_name',
@@ -101,14 +101,7 @@ class TokenCreateSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'token_code', 'total_price', 'created_at', 'updated_at']
-    
-    def to_representation(self, instance):
-        """Remove foods from representation"""
-        ret = super().to_representation(instance)
-        ret.pop('foods', None)
-        return ret
-    
+        read_only_fields = ['id', 'sale_code', 'total_price', 'created_at', 'updated_at']
     
     def validate_foods(self, value):
         """Validate that at least one food item is provided"""
@@ -117,18 +110,12 @@ class TokenCreateSerializer(serializers.ModelSerializer):
         return value
     
     def validate(self, attrs):
-        """Validate that all foods match the subcategory (all tokens are hazrati by default)"""
+        """Validate that all foods match the subcategory and are normal category"""
         subcategory = attrs.get('subcategory')
-        # Get foods from attrs - it should be there after field validation
         foods_data = attrs.get('foods')
         
-        # If foods is not in attrs, try to get from initial_data
-        if foods_data is None:
-            initial_data = getattr(self, 'initial_data', {})
-            foods_data = initial_data.get('foods')
-        
-        # All tokens are hazrati by default, so category is always 'hazrati'
-        category = 'hazrati'
+        # All sales are normal by default, so category is always 'normal'
+        category = 'normal'
         
         if subcategory and foods_data:
             # Validate foods if they exist
@@ -142,10 +129,10 @@ class TokenCreateSerializer(serializers.ModelSerializer):
                         food = food_item
                     
                     if food and hasattr(food, 'category') and hasattr(food, 'subcategory'):
-                        # Check category (must be hazrati)
+                        # Check category (must be normal)
                         if food.category != category:
                             raise serializers.ValidationError({
-                                'foods': f'غذای "{food.title}" از دسته‌بندی عادی است. همه توکن‌ها باید از دسته‌بندی حضرتی باشند.'
+                                'foods': f'غذای "{food.title}" از دسته‌بندی حضرتی است. همه فروش‌ها باید از دسته‌بندی عادی باشند.'
                             })
                         
                         # Check subcategory match
@@ -162,40 +149,40 @@ class TokenCreateSerializer(serializers.ModelSerializer):
         
         return attrs
     
-    @swagger_serializer_method(serializer_or_field=TokenItemReadSerializer(many=True))
+    @swagger_serializer_method(serializer_or_field=DirectSaleItemReadSerializer(many=True))
     def get_items(self, obj):
-        """Get token items"""
+        """Get sale items"""
         items = obj.items.all()
-        return TokenItemReadSerializer(items, many=True).data
+        return DirectSaleItemReadSerializer(items, many=True).data
     
-    def generate_token_code(self):
-        """Generate a random token code"""
+    def generate_sale_code(self):
+        """Generate a random sale code"""
         # Generate 8-character alphanumeric code
         alphabet = string.ascii_uppercase + string.digits
         code = ''.join(secrets.choice(alphabet) for _ in range(8))
         
         # Check if code already exists, regenerate if needed
-        while Token.objects.filter(token_code=code).exists():
+        while DirectSale.objects.filter(sale_code=code).exists():
             code = ''.join(secrets.choice(alphabet) for _ in range(8))
         
         return code
     
     @transaction.atomic
     def create(self, validated_data):
-        """Create Token and TokenItems together, and decrease MenuPlan capacity"""
+        """Create DirectSale and DirectSaleItems together, and decrease MenuPlan capacity"""
         foods_data = validated_data.pop('foods')
-        subcategory = validated_data.pop('subcategory')  # We don't store subcategory in Token model
+        subcategory = validated_data.pop('subcategory')  # We don't store subcategory in DirectSale model
         
-        # Generate token code
-        token_code = self.generate_token_code()
+        # Generate sale code
+        sale_code = self.generate_sale_code()
         
-        # Create Token
-        token = Token.objects.create(
-            token_code=token_code,
+        # Create DirectSale
+        direct_sale = DirectSale.objects.create(
+            sale_code=sale_code,
             **validated_data
         )
         
-        # Calculate total price and create TokenItems
+        # Calculate total price and create DirectSaleItems
         total_price = 0
         for food_item in foods_data:
             food = food_item['food']
@@ -205,11 +192,11 @@ class TokenCreateSerializer(serializers.ModelSerializer):
             item_price = food.unit_price * count
             total_price += item_price
             
-            # Decrease MenuPlan capacity first (before creating TokenItem)
+            # Decrease MenuPlan capacity first (before creating DirectSaleItem)
             # Find MenuPlan with matching food, date, and meal_type
             menu_plan = MenuPlan.objects.filter(
                 food=food,
-                date=token.date,
+                date=direct_sale.date,
                 meal_type=food.meal_type
             ).first()
             
@@ -226,92 +213,53 @@ class TokenCreateSerializer(serializers.ModelSerializer):
             else:
                 # If no MenuPlan found, raise an error
                 raise serializers.ValidationError({
-                    'foods': f'برنامه غذایی برای غذای "{food.title}" در تاریخ {token.date} و نوع {food.get_meal_type_display()} یافت نشد.'
+                    'foods': f'برنامه غذایی برای غذای "{food.title}" در تاریخ {direct_sale.date} و نوع {food.get_meal_type_display()} یافت نشد.'
                 })
             
-            # Create TokenItem after capacity check
-            TokenItem.objects.create(
-                token=token,
+            # Create DirectSaleItem after capacity check
+            DirectSaleItem.objects.create(
+                direct_sale=direct_sale,
                 food=food,
                 count=count
             )
         
         # Update total price
-        token.total_price = total_price
-        token.save()
+        direct_sale.total_price = total_price
+        direct_sale.save()
         
-        return token
+        return direct_sale
     
+    def to_representation(self, instance):
+        """Remove foods from representation"""
+        ret = super().to_representation(instance)
+        ret.pop('foods', None)
+        ret.pop('subcategory', None)  # Also remove subcategory from output
+        return ret
 
 
-class TokenListSerializer(serializers.ModelSerializer):
-    """Serializer for listing tokens"""
+class DirectSaleListSerializer(serializers.ModelSerializer):
+    """Serializer for listing DirectSales"""
     date = JalaliDateField()
     items = serializers.SerializerMethodField()
-    status_label = serializers.CharField(source='get_status_display', read_only=True)
     
     class Meta:
-        model = Token
+        model = DirectSale
         fields = [
             'id',
-            'token_code',
+            'sale_code',
             'date',
             'customer_name',
             'phone',
             'total_price',
-            'status',
-            'status_label',
             'items',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'token_code', 'total_price', 'status', 'status_label', 'items', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'sale_code', 'total_price', 'items', 'created_at', 'updated_at']
     
-    @swagger_serializer_method(serializer_or_field=TokenItemReadSerializer(many=True))
+    @swagger_serializer_method(serializer_or_field=DirectSaleItemReadSerializer(many=True))
     def get_items(self, obj):
-        """Get token items"""
+        """Get sale items"""
         items = obj.items.all()
-        return TokenItemReadSerializer(items, many=True).data
-
-
-class TokenStatusUpdateSerializer(serializers.Serializer):
-    """Serializer for updating token status by token_code"""
-    token_code = serializers.CharField(
-        max_length=150,
-        help_text='کد توکن'
-    )
-    
-    def validate_token_code(self, value):
-        """Validate that token exists"""
-        if not Token.objects.filter(token_code=value).exists():
-            raise serializers.ValidationError('توکن با این کد یافت نشد.')
-        return value
-    
-    def validate(self, attrs):
-        """Validate that token is not already received"""
-        token_code = attrs.get('token_code')
-        if token_code:
-            try:
-                token = Token.objects.get(token_code=token_code)
-                if token.status == 'received':
-                    raise serializers.ValidationError({
-                        'token_code': f'توکن با کد "{token_code}" قبلاً دریافت شده است.'
-                    })
-            except Token.DoesNotExist:
-                pass
-        return attrs
-    
-    def update_status(self):
-        """Update token status to received"""
-        token_code = self.validated_data['token_code']
-        token = Token.objects.get(token_code=token_code)
-        token.status = 'received'
-        token.save()
-        return token
-    
-    @swagger_serializer_method(serializer_or_field=TokenItemReadSerializer(many=True))
-    def get_items(self, obj):
-        """Get token items"""
-        items = obj.items.all()
-        return TokenItemReadSerializer(items, many=True).data
+        return DirectSaleItemReadSerializer(items, many=True).data
 

@@ -13,10 +13,11 @@ class DirectSaleItemInline(admin.TabularInline):
 
 @admin.register(DirectSale)
 class DirectSaleAdmin(admin.ModelAdmin):
-    list_display = ('customer_name', 'phone', 'total_price', 'created_at', 'updated_at')
-    search_fields = ('customer_name', 'phone')
+    list_display = ('sale_code', 'customer_name', 'date', 'total_price', 'created_at', 'updated_at')
+    list_filter = ('date',)
+    search_fields = ('sale_code', 'customer_name', 'phone')
     inlines = (DirectSaleItemInline,)
-    ordering = ('-created_at',)
+    ordering = ('-date',)
     readonly_fields = ('created_at', 'updated_at')
 
 

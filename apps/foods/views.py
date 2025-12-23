@@ -1,12 +1,17 @@
 from rest_framework import mixins, permissions, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models import Count, Q, Sum
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-from apps.accounts.permissions import KitchenAccess, RestaurantOrKitchenAccess
+from apps.accounts.permissions import KitchenAccess, RestaurantOrKitchenAccess, RestaurantOrTokenIssuerAccess
 
 from .models import Dessert, Food
 from .serializers import DessertSerializer, FoodManagementSerializer
+from apps.ingredients.models import CATEGORY_TYPE_CHOICES, SUBCATEGORY_CHOICES
+from apps.menu.models import MenuPlan
 
 
 class FoodManagementViewSet(
@@ -30,6 +35,10 @@ class FoodManagementViewSet(
 
     def get_permissions(self):
         """Allow restaurant_manager and kitchen_manager for reads, kitchen_manager only for writes."""
+        # For statistics action, allow all authenticated users
+        if self.action == 'statistics':
+            return [permissions.IsAuthenticated()]
+        
         if self.request.method in permissions.SAFE_METHODS:
             # For read operations, allow restaurant_manager or kitchen_manager
             return [RestaurantOrKitchenAccess()]
@@ -110,6 +119,106 @@ class FoodManagementViewSet(
     )
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
+    
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    @swagger_auto_schema(
+        operation_summary="Food statistics by category and subcategory based on MenuPlan capacity",
+        operation_description="Get statistics of food capacity from MenuPlan grouped by category and subcategory. Accessible to all authenticated users.",
+        responses={
+            200: openapi.Response(
+                description='Food statistics based on MenuPlan capacity',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'by_category': openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            description='Total capacity grouped by category'
+                        ),
+                        'by_subcategory': openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            description='Total capacity grouped by subcategory'
+                        ),
+                        'by_category_and_subcategory': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_OBJECT),
+                            description='Total capacity grouped by both category and subcategory'
+                        ),
+                        'total_capacity': openapi.Schema(
+                            type=openapi.TYPE_INTEGER,
+                            description='Total capacity across all MenuPlans'
+                        )
+                    }
+                )
+            )
+        },
+        tags=['Food Statistics']
+    )
+    def statistics(self, request):
+        """Get food statistics based on MenuPlan capacity grouped by category and subcategory"""
+        # Get capacity sum by category from MenuPlan
+        category_stats = MenuPlan.objects.select_related('food').values(
+            'food__category'
+        ).annotate(
+            total_capacity=Sum('capacity')
+        ).order_by('food__category')
+        
+        # Get capacity sum by subcategory from MenuPlan
+        subcategory_stats = MenuPlan.objects.select_related('food').values(
+            'food__subcategory'
+        ).annotate(
+            total_capacity=Sum('capacity')
+        ).order_by('food__subcategory')
+        
+        # Get capacity sum by category and subcategory from MenuPlan
+        category_subcategory_stats = MenuPlan.objects.select_related('food').values(
+            'food__category',
+            'food__subcategory'
+        ).annotate(
+            total_capacity=Sum('capacity')
+        ).order_by('food__category', 'food__subcategory')
+        
+        # Convert to dictionaries with labels
+        category_dict = dict(CATEGORY_TYPE_CHOICES)
+        subcategory_dict = dict(SUBCATEGORY_CHOICES)
+        
+        by_category = {}
+        for stat in category_stats:
+            category_key = stat['food__category']
+            category_label = category_dict.get(category_key, category_key)
+            by_category[category_label] = stat['total_capacity'] or 0
+        
+        by_subcategory = {}
+        for stat in subcategory_stats:
+            subcategory_key = stat['food__subcategory']
+            subcategory_label = subcategory_dict.get(subcategory_key, subcategory_key)
+            by_subcategory[subcategory_label] = stat['total_capacity'] or 0
+        
+        by_category_and_subcategory = []
+        for stat in category_subcategory_stats:
+            category_key = stat['food__category']
+            subcategory_key = stat['food__subcategory']
+            category_label = category_dict.get(category_key, category_key)
+            subcategory_label = subcategory_dict.get(subcategory_key, subcategory_key)
+            
+            by_category_and_subcategory.append({
+                'category': category_key,
+                'category_label': category_label,
+                'subcategory': subcategory_key,
+                'subcategory_label': subcategory_label,
+                'capacity': stat['total_capacity'] or 0
+            })
+        
+        # Calculate total capacity
+        total_capacity = MenuPlan.objects.aggregate(
+            total=Sum('capacity')
+        )['total'] or 0
+        
+        return Response({
+            'by_category': by_category,
+            'by_subcategory': by_subcategory,
+            'by_category_and_subcategory': by_category_and_subcategory,
+            'total_capacity': total_capacity
+        })
 
 
 class DessertViewSet(

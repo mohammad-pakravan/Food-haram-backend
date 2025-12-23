@@ -13,8 +13,8 @@ class TokenItemInline(admin.TabularInline):
 
 @admin.register(Token)
 class TokenAdmin(admin.ModelAdmin):
-    list_display = ('token_code', 'customer_name', 'date', 'total_price', 'created_at', 'updated_at')
-    list_filter = ('date',)
+    list_display = ('token_code', 'customer_name', 'date', 'status', 'total_price', 'created_at', 'updated_at')
+    list_filter = ('date', 'status')
     search_fields = ('token_code', 'customer_name', 'phone')
     inlines = (TokenItemInline,)
     ordering = ('-date',)

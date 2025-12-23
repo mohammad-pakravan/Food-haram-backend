@@ -7,6 +7,13 @@ from apps.foods.models import Food
 
 class DirectSale(models.Model):
     objects = jmodels.jManager()
+    sale_code = models.CharField(
+        max_length=150,
+        verbose_name='کد فروش',
+        validators=[MinLengthValidator(2)],
+        blank=True,
+        null=True,
+    )
     customer_name = models.CharField(
         max_length=150,
         verbose_name='نام مشتری',
@@ -19,11 +26,13 @@ class DirectSale(models.Model):
         blank=True,
         null=True,
     )
+    date = jmodels.jDateField(verbose_name='تاریخ', null=True, blank=True)
     total_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         verbose_name='قیمت کل',
         validators=[MinValueValidator(0)],
+        default=0,
     )
     created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
     updated_at = jmodels.jDateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
@@ -34,7 +43,7 @@ class DirectSale(models.Model):
         ordering = ['-created_at']
 
     def __str__(self) -> str:
-        return f"{self.customer_name} - {self.total_price}"
+        return f"{self.sale_code} - {self.customer_name}"
 
 
 class DirectSaleItem(models.Model):

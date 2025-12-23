@@ -4,9 +4,9 @@ from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-from apps.accounts.permissions import TokenIssuerAccess
+from apps.accounts.permissions import TokenIssuerAccess, DeliveryDeskAccess
 from .models import Token, TokenItem
-from .serializers import TokenCreateSerializer, TokenListSerializer
+from .serializers import TokenCreateSerializer, TokenListSerializer, TokenStatusUpdateSerializer
 
 
 class TokenViewSet(viewsets.ModelViewSet):
@@ -85,4 +85,33 @@ class TokenViewSet(viewsets.ModelViewSet):
     )
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
+    
+    @action(detail=False, methods=['post'], permission_classes=[DeliveryDeskAccess], url_path='mark-received')
+    @swagger_auto_schema(
+        operation_summary="Mark token as received",
+        operation_description="Mark a token as received by token_code. Requires delivery_desk role. Prevents duplicate marking.",
+        request_body=TokenStatusUpdateSerializer,
+        responses={
+            200: openapi.Response(
+                description='Token marked as received',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    description='Token details with updated status'
+                )
+            ),
+            400: 'Validation error',
+            404: 'Token not found'
+        },
+        tags=['Token Status']
+    )
+    def mark_received(self, request):
+        """Mark token as received by token_code"""
+        serializer = TokenStatusUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        token = serializer.update_status()
+        
+        # Return token with updated status
+        response_serializer = TokenListSerializer(token)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
 
