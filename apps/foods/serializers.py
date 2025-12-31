@@ -40,6 +40,12 @@ class FoodManagementSerializer(serializers.ModelSerializer):
     subcategory = serializers.SerializerMethodField()
     category_value = serializers.CharField(source='category', write_only=True, required=False)
     subcategory_value = serializers.CharField(source='subcategory', write_only=True, required=False)
+    meal_types = serializers.MultipleChoiceField(
+        choices=[('breakfast', 'صبحانه'), ('lunch', 'ناهار'), ('dinner', 'شام')],
+        required=True,
+        help_text='وعده‌های غذایی (می‌توانید چند مورد را انتخاب کنید - حداقل یک مورد الزامی است)'
+    )
+    meal_types_display = serializers.SerializerMethodField()
 
     class Meta:
         model = Food
@@ -50,7 +56,8 @@ class FoodManagementSerializer(serializers.ModelSerializer):
             'subcategory',
             'category_value',
             'subcategory_value',
-            'meal_type',
+            'meal_types',
+            'meal_types_display',
             'preparation_time',
             'unit_price',
             'ingredients',
@@ -58,7 +65,7 @@ class FoodManagementSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'ingredients_detail', 'created_at', 'updated_at', 'category', 'subcategory']
+        read_only_fields = ['id', 'ingredients_detail', 'created_at', 'updated_at', 'category', 'subcategory', 'meal_types_display']
 
     def get_category(self, obj):
         """Return Persian label for category"""
@@ -69,6 +76,14 @@ class FoodManagementSerializer(serializers.ModelSerializer):
         """Return Persian label for subcategory"""
         subcategory_dict = dict(SUBCATEGORY_CHOICES)
         return subcategory_dict.get(obj.subcategory, obj.subcategory)
+    
+    def get_meal_types_display(self, obj):
+        """Return Persian labels for meal types"""
+        from .models import MEAL_TYPE_CHOICES
+        meal_type_dict = dict(MEAL_TYPE_CHOICES)
+        if obj.meal_types:
+            return [meal_type_dict.get(mt, mt) for mt in obj.meal_types]
+        return []
 
     def validate(self, attrs):
         # Handle category_value and subcategory_value for input
@@ -130,6 +145,27 @@ class FoodManagementSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'category': 'برای تغییر دسته‌بندی یا زیر دسته‌بندی باید مواد اولیه را نیز به‌روزرسانی کنید.'
                 })
+        
+        # Validate meal_types
+        meal_types = attrs.get('meal_types')
+        if meal_types is not None:
+            if not isinstance(meal_types, (list, set)):
+                raise serializers.ValidationError({
+                    'meal_types': 'meal_types باید یک لیست باشد.'
+                })
+            meal_types = list(meal_types)  # Convert set to list if needed
+            if len(meal_types) == 0:
+                raise serializers.ValidationError({
+                    'meal_types': 'حداقل یک وعده غذایی باید انتخاب شود.'
+                })
+            from .models import MEAL_TYPE_CHOICES
+            valid_meal_types = [choice[0] for choice in MEAL_TYPE_CHOICES]
+            for meal_type in meal_types:
+                if meal_type not in valid_meal_types:
+                    raise serializers.ValidationError({
+                        'meal_types': f'وعده غذایی "{meal_type}" معتبر نیست. مقادیر معتبر: {", ".join(valid_meal_types)}'
+                    })
+            attrs['meal_types'] = meal_types  # Ensure it's a list
 
         return attrs
 

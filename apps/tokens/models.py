@@ -70,6 +70,13 @@ class TokenItem(models.Model):
         related_name='token_items',
         verbose_name='غذا',
     )
+    meal_type = models.CharField(
+        max_length=50,
+        choices=[('breakfast', 'صبحانه'), ('lunch', 'ناهار'), ('dinner', 'شام')],
+        verbose_name='وعده غذایی',
+        help_text='وعده غذایی که این آیتم برای آن صادر شده است',
+        default='lunch',  # Default to lunch for backward compatibility
+    )
     count = models.IntegerField(
         verbose_name='تعداد',
         validators=[MinValueValidator(0)],

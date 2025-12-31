@@ -8,7 +8,7 @@ from drf_yasg.utils import swagger_serializer_method
 from drf_yasg import openapi
 
 from .models import DirectSale, DirectSaleItem
-from apps.foods.models import Food
+from apps.foods.models import Food, MEAL_TYPE_CHOICES
 from apps.ingredients.models import NORMAL_SUBCATEGORY_CHOICES, SUBCATEGORY_CHOICES
 from apps.menu.models import MenuPlan
 
@@ -60,17 +60,24 @@ class FoodItemSerializer(serializers.Serializer):
     
     food = serializers.PrimaryKeyRelatedField(queryset=Food.objects.all())
     count = serializers.IntegerField(min_value=1)
+    meal_type = serializers.ChoiceField(
+        choices=[('breakfast', 'صبحانه'), ('lunch', 'ناهار'), ('dinner', 'شام')],
+        required=False,
+        allow_null=True,
+        help_text='وعده غذایی (در صورت وجود چند وعده برای غذا، این فیلد الزامی است)'
+    )
 
 
 class DirectSaleItemReadSerializer(serializers.ModelSerializer):
     """Serializer for reading DirectSaleItem"""
     food_title = serializers.CharField(source='food.title', read_only=True)
     food_unit_price = serializers.DecimalField(source='food.unit_price', max_digits=10, decimal_places=2, read_only=True)
+    meal_type_label = serializers.CharField(source='get_meal_type_display', read_only=True)
     
     class Meta:
         model = DirectSaleItem
-        fields = ['id', 'food', 'food_title', 'food_unit_price', 'count', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        fields = ['id', 'food', 'food_title', 'food_unit_price', 'meal_type', 'meal_type_label', 'count', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'meal_type_label', 'created_at', 'updated_at']
 
 
 class DirectSaleCreateSerializer(serializers.ModelSerializer):
@@ -187,6 +194,31 @@ class DirectSaleCreateSerializer(serializers.ModelSerializer):
         for food_item in foods_data:
             food = food_item['food']
             count = food_item['count']
+            meal_type = food_item.get('meal_type')
+            
+            # Determine meal_type to use
+            if meal_type is None:
+                # If meal_type not specified, check if food has only one meal_type
+                if not food.meal_types or len(food.meal_types) == 0:
+                    raise serializers.ValidationError({
+                        'foods': f'غذای "{food.title}" هیچ وعده غذایی تعریف نشده است.'
+                    })
+                elif len(food.meal_types) == 1:
+                    # Use the single meal_type
+                    meal_type = food.meal_types[0]
+                else:
+                    # Food has multiple meal_types, meal_type must be specified
+                    raise serializers.ValidationError({
+                        'foods': f'غذای "{food.title}" برای چند وعده تعریف شده است. لطفاً وعده مورد نظر را مشخص کنید (meal_type).'
+                    })
+            else:
+                # Validate that the specified meal_type is valid for this food
+                if meal_type not in food.meal_types:
+                    meal_type_dict = dict(MEAL_TYPE_CHOICES)
+                    valid_meal_types = [meal_type_dict.get(mt, mt) for mt in food.meal_types]
+                    raise serializers.ValidationError({
+                        'foods': f'وعده غذایی "{meal_type_dict.get(meal_type, meal_type)}" برای غذای "{food.title}" معتبر نیست. وعده‌های معتبر: {", ".join(valid_meal_types)}'
+                    })
             
             # Calculate price for this item
             item_price = food.unit_price * count
@@ -197,14 +229,14 @@ class DirectSaleCreateSerializer(serializers.ModelSerializer):
             menu_plan = MenuPlan.objects.filter(
                 food=food,
                 date=direct_sale.date,
-                meal_type=food.meal_type
+                meal_type=meal_type
             ).first()
             
             if menu_plan:
                 # Check if there's enough capacity
                 if menu_plan.capacity < count:
                     raise serializers.ValidationError({
-                        'foods': f'ظرفیت کافی برای غذای "{food.title}" وجود ندارد. ظرفیت موجود: {menu_plan.capacity}، درخواستی: {count}'
+                        'foods': f'ظرفیت کافی برای غذای "{food.title}" در وعده {menu_plan.get_meal_type_display()} وجود ندارد. ظرفیت موجود: {menu_plan.capacity}، درخواستی: {count}'
                     })
                 
                 # Decrease capacity
@@ -212,14 +244,16 @@ class DirectSaleCreateSerializer(serializers.ModelSerializer):
                 menu_plan.save()
             else:
                 # If no MenuPlan found, raise an error
+                meal_type_dict = dict(MEAL_TYPE_CHOICES)
                 raise serializers.ValidationError({
-                    'foods': f'برنامه غذایی برای غذای "{food.title}" در تاریخ {direct_sale.date} و نوع {food.get_meal_type_display()} یافت نشد.'
+                    'foods': f'برنامه غذایی برای غذای "{food.title}" در تاریخ {direct_sale.date} و وعده {meal_type_dict.get(meal_type, meal_type)} یافت نشد.'
                 })
             
             # Create DirectSaleItem after capacity check
             DirectSaleItem.objects.create(
                 direct_sale=direct_sale,
                 food=food,
+                meal_type=meal_type,
                 count=count
             )
         

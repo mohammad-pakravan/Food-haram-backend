@@ -89,7 +89,7 @@ class MenuPlanSerializer(serializers.ModelSerializer):
         
         # Check if date is provided (either directly or via date_jalali)
         if 'date' not in attrs and not self.instance:
-            raise serializers.ValidationError({'date_jalali': 'تاریخ الزامی است.'})
+                raise serializers.ValidationError({'date_jalali': 'تاریخ الزامی است.'})
         
         # Ensure cook_status defaults to 'pending' if not provided
         if 'cook_status' not in attrs and not self.instance:

@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import MinLengthValidator, MinValueValidator
 from django.core.exceptions import ValidationError
+from django.contrib.postgres.fields import ArrayField
 from django_jalali.db import models as jmodels
 
 from apps.ingredients.models import (
@@ -37,11 +38,12 @@ class Food(models.Model):
         verbose_name='زیر دسته بندی',
         validators=[MinLengthValidator(2)],
     )
-    meal_type = models.CharField(
-        max_length=150,
-        choices=MEAL_TYPE_CHOICES,
+    meal_types = ArrayField(
+        models.CharField(max_length=50, choices=MEAL_TYPE_CHOICES),
+        size=None,
+        default=list,
         verbose_name='نوع غذا',
-        validators=[MinLengthValidator(2)],
+        help_text='وعده‌های غذایی (می‌توانید چند مورد را انتخاب کنید)',
     )
     preparation_time = models.IntegerField(
         verbose_name='زمان آماده سازی',
