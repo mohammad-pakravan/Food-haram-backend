@@ -8,7 +8,7 @@ import jdatetime
 from datetime import date
 
 from rest_framework import permissions
-from apps.accounts.permissions import KitchenAccess, KitchenOrTokenIssuerAccess
+from apps.accounts.permissions import KitchenAccess, KitchenOrTokenIssuerAccess , RestaurantOrKitchenAccess
 
 from .models import MenuPlan
 from .serializers import MenuPlanSerializer
@@ -37,6 +37,10 @@ class MenuPlanViewSet(
         """Allow token_issuer for read operations, kitchen_manager for write operations"""
         if self.request.method in permissions.SAFE_METHODS:
             return [KitchenOrTokenIssuerAccess()]
+        # Allow restaurant_manager , kitchen_manager for DELETE operations
+        if self.request.method == 'DELETE':
+            return [RestaurantOrKitchenAccess()]
+        # other write operations
         return [KitchenAccess()]
 
     def get_queryset(self):
