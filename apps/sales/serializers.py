@@ -231,24 +231,29 @@ class DirectSaleCreateSerializer(serializers.ModelSerializer):
                 date=direct_sale.date,
                 meal_type=meal_type
             ).first()
-            
+
             if menu_plan:
-                # Check if there's enough capacity
+                # check capacity  
                 if menu_plan.capacity < count:
                     raise serializers.ValidationError({
                         'foods': f'ظرفیت کافی برای غذای "{food.title}" در وعده {menu_plan.get_meal_type_display()} وجود ندارد. ظرفیت موجود: {menu_plan.capacity}، درخواستی: {count}'
                     })
                 
-                # Decrease capacity
+                # --- check for food is cookec or not ---
+                if not menu_plan == "done":
+                    raise serializers.ValidationError({
+                        'foods': f'غذای "{food.title}" در تاریخ {direct_sale.date} و وعده {menu_plan.get_meal_type_display()} برای سرو آماده نیست.'
+                    })
+                
+              
                 menu_plan.capacity -= count
                 menu_plan.save()
             else:
-                # If no MenuPlan found, raise an error
                 meal_type_dict = dict(MEAL_TYPE_CHOICES)
                 raise serializers.ValidationError({
                     'foods': f'برنامه غذایی برای غذای "{food.title}" در تاریخ {direct_sale.date} و وعده {meal_type_dict.get(meal_type, meal_type)} یافت نشد.'
                 })
-            
+
             # Create DirectSaleItem after capacity check
             DirectSaleItem.objects.create(
                 direct_sale=direct_sale,
