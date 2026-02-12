@@ -8,3 +8,6 @@ django-cors-headers==4.3.1
 drf-yasg==1.21.7
 django-jalali==7.4.0
 
+python-barcode 
+Pillow
+qrcode[pil]

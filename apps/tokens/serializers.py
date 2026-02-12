@@ -92,7 +92,8 @@ class TokenCreateSerializer(serializers.ModelSerializer):
     token_code = serializers.CharField(read_only=True)
     total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     items = serializers.SerializerMethodField()
-    
+    barcode_image_url = serializers.SerializerMethodField()
+    qrcode_image_url = serializers.SerializerMethodField()
     class Meta:
         model = Token
         fields = [
@@ -104,11 +105,28 @@ class TokenCreateSerializer(serializers.ModelSerializer):
             'phone',
             'foods',
             'items',
+            'barcode_image_url',
+            'qrcode_image_url',
             'total_price',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'token_code', 'total_price', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id', 'token_code', 'total_price', 'items',
+            'barcode_image_url', 'qrcode_image_url',
+            'created_at', 'updated_at'
+        ]
+    def get_barcode_image_url(self, obj):
+        if obj.barcode_image:
+            request = self.context.get('request')
+            return request.build_absolute_uri(obj.barcode_image.url) if request else obj.barcode_image.url
+        return None
+
+    def get_qrcode_image_url(self, obj):
+        if obj.qrcode_image:
+            request = self.context.get('request')
+            return request.build_absolute_uri(obj.qrcode_image.url) if request else obj.qrcode_image.url
+        return None
     
     def to_representation(self, instance):
         """Remove foods from representation"""
@@ -283,7 +301,9 @@ class TokenListSerializer(serializers.ModelSerializer):
     date = JalaliDateField()
     items = serializers.SerializerMethodField()
     status_label = serializers.CharField(source='get_status_display', read_only=True)
-    
+    barcode_image_url = serializers.SerializerMethodField()
+    qrcode_image_url = serializers.SerializerMethodField()
+      
     class Meta:
         model = Token
         fields = [
@@ -296,17 +316,34 @@ class TokenListSerializer(serializers.ModelSerializer):
             'status',
             'status_label',
             'items',
+            'barcode_image_url',
+            'qrcode_image_url',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'token_code', 'total_price', 'status', 'status_label', 'items', 'created_at', 'updated_at']
-    
+
+        read_only_fields = [
+            'id', 'token_code', 'total_price', 'status', 
+            'status_label', 'items', 'barcode_image_url', 'qrcode_image_url',
+            'created_at', 'updated_at'
+        ]    
     @swagger_serializer_method(serializer_or_field=TokenItemReadSerializer(many=True))
     def get_items(self, obj):
         """Get token items"""
         items = obj.items.all()
         return TokenItemReadSerializer(items, many=True).data
+    
+    def get_barcode_image_url(self, obj):
+        if obj.barcode_image:
+            request = self.context.get('request')
+            return request.build_absolute_uri(obj.barcode_image.url) if request else obj.barcode_image.url
+        return None
 
+    def get_qrcode_image_url(self, obj):
+        if obj.qrcode_image:
+            request = self.context.get('request')
+            return request.build_absolute_uri(obj.qrcode_image.url) if request else obj.qrcode_image.url
+        return None
 
 class TokenStatusUpdateSerializer(serializers.Serializer):
     """Serializer for updating token status by token_code"""
