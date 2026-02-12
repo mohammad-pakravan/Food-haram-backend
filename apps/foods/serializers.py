@@ -6,7 +6,12 @@ from .models import Dessert, Food, FoodIngredient
 
 class FoodIngredientWriteSerializer(serializers.Serializer):
     ingredient = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
-    amount_per_serving = serializers.IntegerField(min_value=0)
+    amount_per_serving = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=0
+    )
+
 
 
 class FoodIngredientReadSerializer(serializers.ModelSerializer):

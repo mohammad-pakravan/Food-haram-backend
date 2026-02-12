@@ -95,8 +95,10 @@ class FoodIngredient(models.Model):
         related_name='food_usages',
         verbose_name='ماده اولیه',
     )
-    amount_per_serving = models.IntegerField(
+    amount_per_serving = models.DecimalField(
         verbose_name='مقدار برای هر سرو',
+        max_digits=10,
+        decimal_places=2,
         validators=[MinValueValidator(0)],
     )
     created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
