@@ -103,6 +103,7 @@ class TokenCreateSerializer(serializers.ModelSerializer):
             'subcategory',
             'customer_name',
             'phone',
+            'deliver_time',
             'foods',
             'items',
             'barcode_image_url',
@@ -110,6 +111,7 @@ class TokenCreateSerializer(serializers.ModelSerializer):
             'total_price',
             'created_at',
             'updated_at',
+ 
         ]
         read_only_fields = [
             'id', 'token_code', 'total_price', 'items',
@@ -312,6 +314,7 @@ class TokenListSerializer(serializers.ModelSerializer):
             'date',
             'customer_name',
             'phone',
+            'deliver_time',
             'total_price',
             'status',
             'status_label',

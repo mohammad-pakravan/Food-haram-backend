@@ -37,6 +37,12 @@ class Token(models.Model):
         blank=True,
         null=True,
     )
+    deliver_time = models.CharField(
+        max_length=150,
+        verbose_name='ساعت تحویل',
+        blank=True,
+        null=True,
+    )
     date = jmodels.jDateField(verbose_name='تاریخ')
     total_price = models.DecimalField(
         max_digits=10,
