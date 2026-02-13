@@ -4,6 +4,7 @@ import jdatetime
 from decimal import Decimal
 
 from .models import MenuPlan
+from apps.ingredients.models import CATEGORY_TYPE_CHOICES, SUBCATEGORY_CHOICES
 
 
 class JalaliDateField(serializers.Field):
@@ -48,7 +49,8 @@ class JalaliDateField(serializers.Field):
 
 class MenuPlanSerializer(serializers.ModelSerializer):
     food_title = serializers.CharField(source='food.title', read_only=True)
-    food_category = serializers.CharField(source='food.category', read_only=True)
+    food_category = serializers.SerializerMethodField()
+    food_subcategory = serializers.SerializerMethodField()
     food_preparation_time = serializers.IntegerField(source='food.preparation_time', read_only=True)
     dessert_title = serializers.CharField(source='dessert.title', read_only=True, allow_null=True)
     date_jalali = JalaliDateField(source='date', required=False)
@@ -62,6 +64,7 @@ class MenuPlanSerializer(serializers.ModelSerializer):
             'food',
             'food_title',
             'food_category',
+            'food_subcategory',
             'food_preparation_time',
             'meal_type',
             'capacity',
@@ -73,9 +76,23 @@ class MenuPlanSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'food_title', 'food_category', 'food_preparation_time', 'dessert_title', 'required_ingredients']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'food_title', 'food_category', 'food_subcategory', 'food_preparation_time', 'dessert_title', 'required_ingredients']
 
     # cook_status is now editable by kitchen managers
+
+    def get_food_category(self, obj):
+        """Return Persian label for food category"""
+        if not obj.food:
+            return None
+        category_dict = dict(CATEGORY_TYPE_CHOICES)
+        return category_dict.get(obj.food.category, obj.food.category)
+    
+    def get_food_subcategory(self, obj):
+        """Return Persian label for food subcategory"""
+        if not obj.food:
+            return None
+        subcategory_dict = dict(SUBCATEGORY_CHOICES)
+        return subcategory_dict.get(obj.food.subcategory, obj.food.subcategory)
 
     def get_required_ingredients(self, obj):
         """
