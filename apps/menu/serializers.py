@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from datetime import date
 import jdatetime
+from decimal import Decimal
 
 from .models import MenuPlan
 
@@ -51,6 +52,7 @@ class MenuPlanSerializer(serializers.ModelSerializer):
     food_preparation_time = serializers.IntegerField(source='food.preparation_time', read_only=True)
     dessert_title = serializers.CharField(source='dessert.title', read_only=True, allow_null=True)
     date_jalali = JalaliDateField(source='date', required=False)
+    required_ingredients = serializers.SerializerMethodField()
 
     class Meta:
         model = MenuPlan
@@ -67,12 +69,40 @@ class MenuPlanSerializer(serializers.ModelSerializer):
             'dessert_title',
             'dessert_count',
             'cook_status',
+            'required_ingredients',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'food_title', 'food_category', 'food_preparation_time', 'dessert_title']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'food_title', 'food_category', 'food_preparation_time', 'dessert_title', 'required_ingredients']
 
     # cook_status is now editable by kitchen managers
+
+    def get_required_ingredients(self, obj):
+        """
+        محاسبه مواد اولیه مورد نیاز برای این برنامه غذایی
+        مقدار مورد نیاز = amount_per_serving × capacity
+        """
+        if not obj.food:
+            return []
+        
+        ingredients_data = []
+        food_ingredients = obj.food.ingredients.all()
+        
+        for food_ingredient in food_ingredients:
+            # محاسبه مقدار مورد نیاز: مقدار برای هر سرو × ظرفیت
+            required_amount = Decimal(str(food_ingredient.amount_per_serving)) * Decimal(str(obj.capacity))
+            
+            ingredients_data.append({
+                'ingredient_id': food_ingredient.ingredient.id,
+                'ingredient_name': food_ingredient.ingredient.name,
+                'ingredient_code': food_ingredient.ingredient.code,
+                'ingredient_unit': food_ingredient.ingredient.unit,
+                'amount_per_serving': str(food_ingredient.amount_per_serving),
+                'capacity': obj.capacity,
+                'required_amount': str(required_amount),
+            })
+        
+        return ingredients_data
 
     def validate(self, attrs):
         """Ensure date is provided and convert date_jalali to date"""
