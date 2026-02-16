@@ -40,6 +40,10 @@ class DeliveryDeskAccess(HasPanelAccess):
     required_role = 'delivery_desk'
 
 
+class WarehouseAccess(HasPanelAccess):
+    required_role = 'warehouse_manager'
+
+
 class RestaurantOrKitchenAccess(BasePermission):
     """
     Permission class that allows both restaurant_manager and kitchen_manager roles.

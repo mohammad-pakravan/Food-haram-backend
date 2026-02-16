@@ -7,6 +7,7 @@ class AccessRole(models.TextChoices):
     RESTAURANT_MANAGER = 'restaurant_manager', 'مدیر رستوران'
     TOKEN_ISSUER = 'token_issuer', 'صدور ژتون'
     DELIVERY_DESK = 'delivery_desk', 'تحویل غذا'
+    WAREHOUSE_MANAGER = 'warehouse_manager', 'انباردار'
 
 
 class User(AbstractUser):

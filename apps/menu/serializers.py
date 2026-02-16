@@ -55,6 +55,7 @@ class MenuPlanSerializer(serializers.ModelSerializer):
     dessert_title = serializers.CharField(source='dessert.title', read_only=True, allow_null=True)
     date_jalali = JalaliDateField(source='date', required=False)
     required_ingredients = serializers.SerializerMethodField()
+    consumed_ingredients = serializers.SerializerMethodField()
 
     class Meta:
         model = MenuPlan
@@ -73,10 +74,11 @@ class MenuPlanSerializer(serializers.ModelSerializer):
             'dessert_count',
             'cook_status',
             'required_ingredients',
+            'consumed_ingredients',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'food_title', 'food_category', 'food_subcategory', 'food_preparation_time', 'dessert_title', 'required_ingredients']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'food_title', 'food_category', 'food_subcategory', 'food_preparation_time', 'dessert_title', 'required_ingredients', 'consumed_ingredients']
 
     # cook_status is now editable by kitchen managers
 
@@ -120,6 +122,35 @@ class MenuPlanSerializer(serializers.ModelSerializer):
             })
         
         return ingredients_data
+
+    def get_consumed_ingredients(self, obj):
+        """
+        نمایش مصرفی‌های ثبت شده برای این برنامه غذایی
+        فقط اگر cook_status = 'done' باشد نمایش داده می‌شود
+        """
+        if obj.cook_status != 'done':
+            return []
+        
+        from apps.ingredients.models import MaterialConsumption
+        
+        consumptions = MaterialConsumption.objects.filter(menu_plan=obj).select_related('ingredient', 'created_by')
+        
+        consumed_data = []
+        for consumption in consumptions:
+            consumed_data.append({
+                'id': consumption.id,
+                'ingredient_id': consumption.ingredient.id,
+                'ingredient_name': consumption.ingredient.name,
+                'ingredient_code': consumption.ingredient.code,
+                'ingredient_unit': consumption.ingredient.unit,
+                'consumed_amount': str(consumption.consumed_amount),
+                'unit': consumption.unit,
+                'notes': consumption.notes,
+                'created_by': consumption.created_by.username if consumption.created_by else None,
+                'created_at': consumption.created_at,
+            })
+        
+        return consumed_data
 
     def validate(self, attrs):
         """Ensure date is provided and convert date_jalali to date"""

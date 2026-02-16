@@ -186,3 +186,135 @@ class InventoryLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.inventory.ingredient.name} - {self.amount}"
+
+
+class MaterialConsumption(models.Model):
+    """
+    مدل مصرفی BOM - ثبت مصرف واقعی مواد اولیه برای برنامه‌های غذایی
+    توسط مسئول آشپزخانه ثبت می‌شود
+    """
+    objects = jmodels.jManager()
+    menu_plan = models.ForeignKey(
+        'menu.MenuPlan',
+        on_delete=models.CASCADE,
+        related_name='material_consumptions',
+        verbose_name='برنامه غذایی',
+    )
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE,
+        related_name='consumptions',
+        verbose_name='ماده اولیه',
+    )
+    consumed_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name='مقدار مصرف شده',
+    )
+    unit = models.CharField(
+        max_length=150,
+        choices=UNIT_CHOICES,
+        verbose_name='واحد',
+        validators=[MinLengthValidator(1)],
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='یادداشت',
+    )
+    created_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='material_consumptions',
+        verbose_name='ثبت شده توسط',
+    )
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = jmodels.jDateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
+
+    class Meta:
+        verbose_name = 'مصرفی BOM'
+        verbose_name_plural = 'مصرفی‌های BOM'
+        ordering = ['-created_at']
+        unique_together = [['menu_plan', 'ingredient']]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        
+        # اعتبارسنجی که menu_plan.cook_status = 'done'
+        if self.menu_plan_id and self.menu_plan.cook_status != 'done':
+            raise ValidationError({
+                'menu_plan': 'فقط برای برنامه‌های غذایی با وضعیت "پخته شده" می‌توان مصرفی ثبت کرد.'
+            })
+        
+        # اعتبارسنجی که menu_plan و ingredient از یک category/subcategory باشند
+        if self.menu_plan_id and self.ingredient_id:
+            food = self.menu_plan.food
+            if food.category != self.ingredient.category:
+                category_dict = dict(CATEGORY_TYPE_CHOICES)
+                food_category_label = category_dict.get(food.category, food.category)
+                ingredient_category_label = category_dict.get(self.ingredient.category, self.ingredient.category)
+                raise ValidationError({
+                    'ingredient': f'دسته‌بندی ماده اولیه ({ingredient_category_label}) با دسته‌بندی غذا ({food_category_label}) مطابقت ندارد.'
+                })
+            
+            if food.subcategory != self.ingredient.subcategory:
+                subcategory_dict = dict(SUBCATEGORY_CHOICES)
+                food_subcategory_label = subcategory_dict.get(food.subcategory, food.subcategory)
+                ingredient_subcategory_label = subcategory_dict.get(self.ingredient.subcategory, self.ingredient.subcategory)
+                raise ValidationError({
+                    'ingredient': f'زیر دسته‌بندی ماده اولیه ({ingredient_subcategory_label}) با زیر دسته‌بندی غذا ({food_subcategory_label}) مطابقت ندارد.'
+                })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.menu_plan.food.title} - {self.ingredient.name} ({self.consumed_amount} {self.unit})"
+
+
+class InventoryStockUpdate(models.Model):
+    """
+    مدل ثبت موجودی واقعی - ثبت موجودی واقعی مواد اولیه توسط انباردار
+    """
+    objects = jmodels.jManager()
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE,
+        related_name='stock_updates',
+        verbose_name='ماده اولیه',
+    )
+    actual_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name='مقدار واقعی موجودی',
+    )
+    inspection_date = jmodels.jDateField(
+        verbose_name='تاریخ بازرسی',
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='یادداشت',
+    )
+    created_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='inventory_stock_updates',
+        verbose_name='ثبت شده توسط',
+    )
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')
+    updated_at = jmodels.jDateTimeField(auto_now=True, verbose_name='تاریخ به‌روزرسانی')
+
+    class Meta:
+        verbose_name = 'ثبت موجودی واقعی'
+        verbose_name_plural = 'ثبت‌های موجودی واقعی'
+        ordering = ['-inspection_date', '-created_at']
+        unique_together = [['ingredient', 'inspection_date']]
+
+    def __str__(self) -> str:
+        return f"{self.ingredient.name} - {self.actual_amount} ({self.inspection_date})"
