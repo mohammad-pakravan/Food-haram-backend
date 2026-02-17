@@ -1,4 +1,5 @@
 from django.db import models
+from django.db import transaction
 from django.core.validators import MinLengthValidator, MinValueValidator
 from django_jalali.db import models as jmodels
 
@@ -58,6 +59,56 @@ class MenuPlan(models.Model):
         verbose_name = 'برنامه غذایی'
         verbose_name_plural = 'برنامه‌های غذایی'
         ordering = ['-date', 'meal_type']
+    
+    
+    def save(self, *args, **kwargs):
+
+        is_new = self.pk is None
+        old_status = None
+
+        if not is_new:
+            old_status = MenuPlan.objects\
+                .filter(pk=self.pk)\
+                .values_list('cook_status', flat=True)\
+                .first()
+
+        super().save(*args, **kwargs)
+
+        if old_status != 'done' and self.cook_status == 'done':
+            transaction.on_commit(
+                lambda: self._create_material_consumptions()
+            )
+
+    def _create_material_consumptions(self):
+        from apps.ingredients.models import MaterialConsumption
+        from apps.foods.models import FoodIngredient
+
+        # جلوگیری از دوباره ثبت شدن
+        if self.material_consumptions.exists():
+            return
+
+        food_ingredients = (
+            FoodIngredient.objects
+            .select_related('ingredient')
+            .filter(food=self.food)
+        )
+
+        consumptions = []
+
+        for fi in food_ingredients:
+            total_amount = fi.amount_per_serving * self.capacity
+
+            consumptions.append(
+                MaterialConsumption(
+                    menu_plan=self,
+                    ingredient=fi.ingredient,
+                    consumed_amount=total_amount,
+                    unit=fi.ingredient.unit,
+                    created_by=None,
+                )
+            )
+
+        MaterialConsumption.objects.bulk_create(consumptions)
 
     def __str__(self) -> str:
         return f"{self.food.title} ({self.date})"
