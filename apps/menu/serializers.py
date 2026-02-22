@@ -147,7 +147,7 @@ class MenuPlanSerializer(serializers.ModelSerializer):
                 'unit': consumption.unit,
                 'notes': consumption.notes,
                 'created_by': consumption.created_by.username if consumption.created_by else None,
-                'created_at': consumption.created_at,
+                'created_at': consumption.created_at.isoformat() if consumption.created_at else None,
             })
         
         return consumed_data
